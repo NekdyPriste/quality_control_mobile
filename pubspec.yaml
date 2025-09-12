@@ -1,0 +1,61 @@
+name: quality_control_mobile
+description: Mobilní aplikace pro kontrolu kvality dílů porovnáním s 3D modelem
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  riverpod: ^2.4.0
+  flutter_riverpod: ^2.4.0
+  
+  # Camera & Image Processing
+  camera: ^0.10.5
+  image: ^4.0.17
+  image_picker: ^1.0.4
+  
+  # HTTP & API
+  http: ^1.1.0
+  
+  # JSON Serialization
+  json_annotation: ^4.8.1
+  
+  # Database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  
+  # File handling
+  path_provider: ^2.1.1
+  permission_handler: ^11.0.1
+  
+  # Settings storage
+  shared_preferences: ^2.2.2
+  
+  # UUID generation
+  uuid: ^4.2.1
+  
+  # Background tasks
+  workmanager: ^0.5.2
+  
+  # UI
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  
+  # Code generation
+  build_runner: ^2.4.6
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/demo_images/
