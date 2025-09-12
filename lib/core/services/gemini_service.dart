@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -10,6 +11,18 @@ import '../models/comparison_result.dart';
 import '../models/quality_report.dart';
 import '../models/defect.dart';
 import '../utils/api_constants.dart';
+
+// Custom exception class pro lepší error handling
+class GeminiServiceException implements Exception {
+  final String message;
+  final String? code;
+  final dynamic originalException;
+
+  const GeminiServiceException(this.message, {this.code, this.originalException});
+
+  @override
+  String toString() => 'GeminiServiceException: $message${code != null ? ' (Code: $code)' : ''}';
+}
 
 final geminiServiceProvider = Provider<GeminiService>((ref) {
   return GeminiService();
@@ -28,18 +41,25 @@ class GeminiService {
   
   Future<Map<String, dynamic>> verifyApiModel([String? model]) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final apiKey = prefs.getString('gemini_api_key');
+      // Použití secure storage místo SharedPreferences
+      final apiKey = await ApiConstants.getGeminiApiKey();
       final selectedModel = model ?? await getCurrentModel();
       
       if (apiKey == null || apiKey.isEmpty) {
-        throw Exception('API klíč není nastaven');
+        // Fallback na environment variable pro demo
+        final fallbackKey = ApiConstants.fallbackApiKey;
+        if (fallbackKey == 'YOUR_GEMINI_API_KEY_HERE') {
+          throw Exception('API klíč není nastaven. Prosím nastavte klíč v nastavení aplikace.');
+        }
       }
+      
+      // Použití správného API klíče (secure storage nebo fallback)
+      final finalApiKey = apiKey ?? ApiConstants.fallbackApiKey;
       
       final response = await http.get(
         Uri.parse('${ApiConstants.geminiBaseUrl}/models/$selectedModel'),
         headers: {
-          'x-goog-api-key': apiKey,
+          'x-goog-api-key': finalApiKey,
         },
       ).timeout(const Duration(seconds: 10));
       
@@ -146,12 +166,18 @@ PRAVIDLA:
     required PartType partType,
   }) async {
     try {
-      // Get API key from settings
-      final prefs = await SharedPreferences.getInstance();
-      final apiKey = prefs.getString('gemini_api_key');
+      // Get API key from secure storage
+      String? apiKey = await ApiConstants.getGeminiApiKey();
       
+      // Fallback pro demo nebo pokud secure storage není k dispozici
       if (apiKey == null || apiKey.isEmpty) {
-        throw Exception('Gemini API klíč není nastaven. Zkontrolujte nastavení aplikace.');
+        apiKey = ApiConstants.fallbackApiKey;
+        if (apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
+          throw GeminiServiceException(
+            'API klíč není nastaven. Prosím nastavte svůj Gemini API klíč v nastavení aplikace.',
+            code: 'API_KEY_MISSING'
+          );
+        }
       }
       
       // Čtení bytů ze souborů s podporou web platformy a demo režimu
@@ -231,17 +257,87 @@ PRAVIDLA:
       ).timeout(ApiConstants.requestTimeout);
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        final content = responseData['candidates'][0]['content']['parts'][0]['text'];
-        
-        // Parsování JSON odpovědi od Gemini
-        final analysisData = jsonDecode(content);
-        return _parseGeminiResponse(analysisData);
+        try {
+          final responseData = jsonDecode(response.body);
+          
+          // Validace response struktury
+          if (!responseData.containsKey('candidates') || 
+              responseData['candidates'].isEmpty) {
+            throw GeminiServiceException(
+              'Neočekávaný formát odpovědi z Gemini API - chybí candidates',
+              code: 'INVALID_RESPONSE_FORMAT'
+            );
+          }
+          
+          final candidate = responseData['candidates'][0];
+          if (!candidate.containsKey('content') || 
+              !candidate['content'].containsKey('parts') ||
+              candidate['content']['parts'].isEmpty) {
+            throw GeminiServiceException(
+              'Neočekávaný formát odpovědi z Gemini API - chybí content',
+              code: 'INVALID_RESPONSE_FORMAT'
+            );
+          }
+          
+          final content = candidate['content']['parts'][0]['text'];
+          
+          // Parsování JSON odpovědi od Gemini
+          final analysisData = jsonDecode(content);
+          return _parseGeminiResponse(analysisData);
+        } on FormatException catch (e) {
+          throw GeminiServiceException(
+            'Neplatná JSON odpověď z Gemini API',
+            code: 'JSON_PARSE_ERROR',
+            originalException: e
+          );
+        }
+      } else if (response.statusCode == 401) {
+        throw GeminiServiceException(
+          'Neplatný API klíč. Zkontrolujte nastavení.',
+          code: 'UNAUTHORIZED'
+        );
+      } else if (response.statusCode == 429) {
+        throw GeminiServiceException(
+          'Překročen limit API požadavků. Zkuste to znovu za chvíli.',
+          code: 'RATE_LIMIT_EXCEEDED'
+        );
+      } else if (response.statusCode >= 500) {
+        throw GeminiServiceException(
+          'Chyba serveru Gemini API. Zkuste to znovu později.',
+          code: 'SERVER_ERROR'
+        );
       } else {
-        throw Exception('Gemini API error: ${response.statusCode} - ${response.body}');
+        throw GeminiServiceException(
+          'Gemini API chyba: ${response.statusCode} - ${response.body}',
+          code: 'API_ERROR'
+        );
       }
+    } on GeminiServiceException {
+      rethrow; // Předáme naše vlastní exceptions
+    } on SocketException catch (e) {
+      throw GeminiServiceException(
+        'Chyba síťového připojení. Zkontrolujte internetové připojení.',
+        code: 'NETWORK_ERROR',
+        originalException: e
+      );
+    } on TimeoutException catch (e) {
+      throw GeminiServiceException(
+        'Časový limit požadavku vypršel. Zkuste to znovu.',
+        code: 'TIMEOUT_ERROR',
+        originalException: e
+      );
+    } on FormatException catch (e) {
+      throw GeminiServiceException(
+        'Chyba při čtení obrázku. Zkontrolujte formát souboru.',
+        code: 'IMAGE_FORMAT_ERROR',
+        originalException: e
+      );
     } catch (e) {
-      throw Exception('Failed to analyze images: $e');
+      throw GeminiServiceException(
+        'Neočekávaná chyba při analýze obrázků: $e',
+        code: 'UNKNOWN_ERROR',
+        originalException: e
+      );
     }
   }
 

@@ -87,8 +87,11 @@ Zaměř se na typické defekty obrábění jako jsou:
     try {
       final prefs = await SharedPreferences.getInstance();
       
+      // Load API key from secure storage
+      final apiKey = await ApiConstants.getGeminiApiKey();
+      
       setState(() {
-        _apiKeyController.text = prefs.getString('gemini_api_key') ?? '';
+        _apiKeyController.text = apiKey ?? '';
         _promptVyliskyController.text = prefs.getString('prompt_vylisky') ?? _defaultPromptVylisky;
         _promptObrabeneController.text = prefs.getString('prompt_obrabene') ?? _defaultPromptObrabene;
         _emailController.text = prefs.getString('default_email') ?? 'kvalita@firma.cz';
@@ -106,7 +109,11 @@ Zaměř se na typické defekty obrábění jako jsou:
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      await prefs.setString('gemini_api_key', _apiKeyController.text);
+      // Save API key to secure storage
+      if (_apiKeyController.text.isNotEmpty) {
+        await ApiConstants.setGeminiApiKey(_apiKeyController.text);
+      }
+      
       await prefs.setString('prompt_vylisky', _promptVyliskyController.text);
       await prefs.setString('prompt_obrabene', _promptObrabeneController.text);
       await prefs.setString('default_email', _emailController.text);
@@ -178,6 +185,9 @@ Zaměř se na typické defekty obrábění jako jsou:
     _showInfo('Testování API klíče...', duration: 1);
     
     try {
+      // First save the API key to secure storage so GeminiService can use it
+      await ApiConstants.setGeminiApiKey(_apiKeyController.text);
+      
       final geminiService = GeminiService();
       final modelInfo = await geminiService.verifyApiModel();
       
