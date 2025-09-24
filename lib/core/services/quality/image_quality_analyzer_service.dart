@@ -28,19 +28,30 @@ class ImageQualityAnalyzerService {
     required File partImage,
   }) async {
     try {
-      // Analyzuj kvalitu obou snímků paralelně
+      // Pro demo/web režim rychle vrátíme mock výsledek
+      if (referenceImage.path.contains('demo_') || partImage.path.contains('demo_')) {
+        print('Demo režim: Používám mock kvalitu snímků');
+        return PreAnalysisResult.proceed(
+          expectedConfidence: 0.8,
+          referenceQuality: ImageQualityMetrics.defaultMetrics(),
+          partQuality: ImageQualityMetrics.defaultMetrics(),
+        );
+      }
+
+      // Analyzuj kvalitu obou snímků paralelně s timeoutem
       final results = await Future.wait([
         analyzeImageQuality(referenceImage),
         analyzeImageQuality(partImage),
-      ]);
-      
+      ]).timeout(const Duration(seconds: 5));
+
       final refQuality = results[0];
       final partQuality = results[1];
-      
+
       // Rozhodni na základě kvality snímků
       return _makePreAnalysisDecision(refQuality, partQuality);
-      
+
     } catch (e) {
+      print('Chyba při analýze kvality: $e');
       // V případě chyby analýzy dovolíme pokračování s varováním
       return PreAnalysisResult.proceedWithWarning(
         expectedConfidence: 0.5,

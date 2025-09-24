@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -22,6 +23,7 @@ class EnhancedAnalysisRecordService {
   static const int _maxRecordsInMemory = 50;
 
   Database? _database;
+  final Map<String, EnhancedAnalysisRecord> _webMemoryCache = <String, EnhancedAnalysisRecord>{};
 
   /// Vytvoří nový analysis record
   Future<EnhancedAnalysisRecord> createAnalysisRecord({
@@ -186,6 +188,12 @@ class EnhancedAnalysisRecordService {
   /// Načte analysis record podle ID
   Future<EnhancedAnalysisRecord?> getRecord(String recordId) async {
     final db = await _getDatabase();
+
+    if (db == null) {
+      // Web/fallback mode - use memory cache
+      return _webMemoryCache[recordId];
+    }
+
     final maps = await db.query(
       _tableName,
       where: 'id = ?',
@@ -206,10 +214,18 @@ class EnhancedAnalysisRecordService {
     AnalysisStatus? statusFilter,
   }) async {
     final db = await _getDatabase();
-    
+
+    if (db == null) {
+      // Web/fallback mode - use memory cache
+      return _webMemoryCache.values
+          .where((record) => record.inputData.userId == userId)
+          .where((record) => statusFilter == null || record.status == statusFilter)
+          .toList();
+    }
+
     String whereClause = 'user_id = ?';
     List<dynamic> whereArgs = [userId];
-    
+
     if (statusFilter != null) {
       whereClause += ' AND status = ?';
       whereArgs.add(statusFilter.name);
@@ -241,7 +257,12 @@ class EnhancedAnalysisRecordService {
     int? offset,
   }) async {
     final db = await _getDatabase();
-    
+
+    if (db == null) {
+      // Web/fallback mode - simple memory search
+      return _webMemoryCache.values.toList();
+    }
+
     final whereClauses = <String>[];
     final whereArgs = <dynamic>[];
 
@@ -412,6 +433,18 @@ class EnhancedAnalysisRecordService {
     final cutoffDate = DateTime.now().subtract(Duration(days: retentionDays));
     final db = await _getDatabase();
 
+    if (db == null) {
+      // Web/fallback mode - cleanup memory cache
+      final keysToRemove = _webMemoryCache.keys
+          .where((key) => _webMemoryCache[key]!.createdAt.isBefore(cutoffDate))
+          .toList();
+
+      for (final key in keysToRemove) {
+        _webMemoryCache.remove(key);
+      }
+      return keysToRemove.length;
+    }
+
     return await db.delete(
       _tableName,
       where: 'created_at < ?',
@@ -420,17 +453,36 @@ class EnhancedAnalysisRecordService {
   }
 
   /// Private helper methods
-  Future<Database> _getDatabase() async {
+  Future<Database?> _getDatabase() async {
+    // Web platformní fallback - použij memory cache
+    if (kIsWeb) {
+      return null; // Indicates web mode - use memory cache
+    }
+
     if (_database != null && _database!.isOpen) {
       return _database!;
     }
 
-    _database = await DatabaseHelper().database;
-    return _database!;
+    try {
+      _database = await DatabaseHelper().database;
+      return _database!;
+    } catch (e) {
+      print('Database error: $e, using memory fallback');
+      return null; // Fallback to memory cache
+    }
   }
 
   Future<void> _saveRecord(EnhancedAnalysisRecord record) async {
     final db = await _getDatabase();
+
+    if (db == null) {
+      // Web/fallback mode - use memory cache
+      _webMemoryCache[record.id] = record;
+      print('📝 [Web Mode] Record saved to memory cache: ${record.id}');
+      return;
+    }
+
+    // Database mode
     await db.insert(
       _tableName,
       _recordToMap(record),

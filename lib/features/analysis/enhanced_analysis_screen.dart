@@ -216,17 +216,45 @@ class _EnhancedAnalysisScreenState extends ConsumerState<EnhancedAnalysisScreen>
   }
 
   void _navigateToResults(EnhancedAnalysisResult result) {
+    // Convert Enhanced Analysis Result to legacy format for ResultsScreen
+    final comparisonResult = result.aiResult ?? ComparisonResult(
+      overallQuality: QualityStatus.fail,
+      confidenceScore: result.confidenceScore?.overallConfidence ?? 0.0,
+      defectsFound: [],
+      summary: 'Enhanced Analysis completed with ${result.decision}',
+    );
+
+    // Create enhanced ComparisonResult with additional data from Enhanced Analysis
+    final enhancedComparisonResult = ComparisonResult(
+      overallQuality: comparisonResult.overallQuality,
+      confidenceScore: result.confidenceScore?.overallConfidence ?? comparisonResult.confidenceScore,
+      defectsFound: comparisonResult.defectsFound,
+      summary: comparisonResult.summary + '\n\n🚀 Enhanced Analysis:\n' +
+               (result.allRecommendations?.map((r) => '• ${r.description}').join('\n') ?? ''),
+    );
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => EnhancedResultsScreen(
-          result: result,
+        builder: (context) => ResultsScreen(
+          comparisonResult: enhancedComparisonResult,
           partType: widget.partType,
           referenceImagePath: widget.referenceImagePath,
           partImagePath: widget.partImagePath,
         ),
       ),
     );
+  }
+
+  double _mapQualityStatusToScore(QualityStatus status) {
+    switch (status) {
+      case QualityStatus.pass:
+        return 0.9;
+      case QualityStatus.warning:
+        return 0.6;
+      case QualityStatus.fail:
+        return 0.3;
+    }
   }
 
   void _retakeImages() {
@@ -576,7 +604,7 @@ class _EnhancedAnalysisScreenState extends ConsumerState<EnhancedAnalysisScreen>
       case RecommendationType.retakePhoto: return Icons.camera_alt;
       case RecommendationType.improveConditions: return Icons.wb_incandescent;
       case RecommendationType.adjustSettings: return Icons.settings;
-      case RecommendationType.changeBackground: return Icons.backdrop;
+      case RecommendationType.changeBackground: return Icons.image;
       case RecommendationType.repositionCamera: return Icons.center_focus_strong;
       case RecommendationType.reviewSettings: return Icons.checklist;
       case RecommendationType.proceed: return Icons.play_arrow;

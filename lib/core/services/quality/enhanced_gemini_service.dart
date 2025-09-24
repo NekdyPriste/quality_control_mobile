@@ -54,6 +54,9 @@ class EnhancedGeminiService {
     AnalysisComplexity complexity = AnalysisComplexity.moderate,
     Map<String, dynamic>? contextualData,
   }) async {
+    print('🚀 [Enhanced Analysis] START - userId: $userId, complexity: $complexity');
+    print('📸 [Enhanced Analysis] Reference: ${referenceImage.path}');
+    print('📸 [Enhanced Analysis] Part: ${partImage.path}');
     // 1. Vytvoří analysis record
     final record = await _recordService.createAnalysisRecord(
       referenceImagePath: referenceImage.path,
@@ -64,11 +67,13 @@ class EnhancedGeminiService {
 
     try {
       // 2. Pre-analysis: Image Quality Evaluation
+      print('🔍 [Enhanced Analysis] STEP 2: Starting image quality evaluation...');
       final preAnalysisResult = await _confidenceService.evaluateImageQuality(
         referenceImage: referenceImage,
         partImage: partImage,
         contextualData: contextualData,
       );
+      print('✅ [Enhanced Analysis] STEP 2: Quality evaluation completed - Decision: ${preAnalysisResult.decision}');
 
       // Update record s quality analysis
       await _recordService.updateWithQualityAnalysis(
@@ -78,15 +83,19 @@ class EnhancedGeminiService {
       );
 
       // 3. Rozhodnutí na základě pre-analysis
+      print('🔀 [Enhanced Analysis] STEP 3: Processing decision - ${preAnalysisResult.decision}');
       switch (preAnalysisResult.decision) {
         case PreAnalysisDecision.rejectAndRetake:
+          print('❌ [Enhanced Analysis] REJECT_AND_RETAKE path');
           return await _handleRejectAndRetake(record.id, preAnalysisResult);
 
         case PreAnalysisDecision.optimizeFirst:
+          print('⚙️ [Enhanced Analysis] OPTIMIZE_FIRST path');
           return await _handleOptimizeFirst(record.id, preAnalysisResult);
 
         case PreAnalysisDecision.proceedWithWarning:
         case PreAnalysisDecision.proceed:
+          print('🚀 [Enhanced Analysis] PROCEED_WITH_AI path');
           return await _proceedWithAIAnalysis(
             recordId: record.id,
             referenceImage: referenceImage,
@@ -203,27 +212,33 @@ class EnhancedGeminiService {
     required AnalysisComplexity complexity,
     required PreAnalysisResult preAnalysisResult,
   }) async {
+    print('🤖 [AI Analysis] START - recordId: $recordId');
     final startTime = DateTime.now();
 
     try {
       // Provede AI analýzu pomocí původního GeminiService
+      print('📡 [AI Analysis] STEP 1: Calling Gemini API...');
       final aiResult = await _geminiService.analyzeImages(
         referenceImage: referenceImage,
         partImage: partImage,
         partType: partType,
       );
+      print('✅ [AI Analysis] STEP 1: Gemini API completed - Result: ${aiResult.overallQuality}');
 
       final processingTime = DateTime.now().difference(startTime);
 
       // Vypočítá enhanced confidence score
+      print('🧮 [AI Analysis] STEP 2: Calculating confidence score...');
       final confidenceScore = await _confidenceService.calculateFinalConfidence(
         preAnalysis: preAnalysisResult,
         aiResult: aiResult,
         complexity: complexity,
         history: await _confidenceService.getModelPerformanceHistory(),
       );
+      print('✅ [AI Analysis] STEP 2: Confidence score calculated - ${confidenceScore.overallConfidence}');
 
       // Generuje recommendations na základě všech dostupných dat
+      print('💡 [AI Analysis] STEP 3: Generating recommendations...');
       final recommendations = await _recommendationService.generateRecommendations(
         referenceQuality: preAnalysisResult.referenceQuality!,
         partQuality: preAnalysisResult.partQuality!,
@@ -332,10 +347,10 @@ class EnhancedGeminiService {
 
     // Převede QualityReport na ComparisonResult pro compatibility
     final comparisonResult = ComparisonResult(
-      overallQuality: _mapScoreToQualityStatus(record.analysisResult!.overallScore),
-      confidenceScore: record.confidenceScore!.overallConfidence,
-      defectsFound: record.analysisResult!.defectsFound,
-      summary: record.analysisResult!.summary,
+      overallQuality: _mapScoreToQualityStatus(record.analysisResult?.overallScore ?? 0.0),
+      confidenceScore: record.confidenceScore?.overallConfidence ?? 0.0,
+      defectsFound: record.analysisResult?.defectsFound ?? [],
+      summary: record.analysisResult?.summary ?? '',
     );
 
     return await _feedbackService.createGuidedFeedbackPrompts(

@@ -6,6 +6,7 @@ import '../../models/quality/enhanced_confidence_score.dart';
 import '../../models/quality/action_recommendation.dart';
 import '../../models/quality/pre_analysis_result.dart';
 import '../../models/comparison_result.dart';
+import '../../models/defect.dart';
 
 final recommendationEngineServiceProvider = Provider<RecommendationEngineService>((ref) {
   return RecommendationEngineService();
@@ -370,7 +371,7 @@ class RecommendationEngineService {
       priority: priority,
       title: 'Pořídit nové snímky',
       description: preAnalysisResult.reason,
-      steps: preAnalysisResult.recommendations.asMap().entries.map((entry) {
+      steps: preAnalysisResult.recommendations.toList().asMap().entries.map((entry) {
         return RecommendationStep(
           order: entry.key + 1,
           action: entry.value,
@@ -397,7 +398,7 @@ class RecommendationEngineService {
       priority: ActionPriority.medium,
       title: 'Optimalizovat před analýzou',
       description: 'Zlepšení podmínek povede k přesnějším výsledkům',
-      steps: preAnalysisResult.recommendations.take(3).asMap().entries.map((entry) {
+      steps: preAnalysisResult.recommendations.take(3).toList().asMap().entries.map((entry) {
         return RecommendationStep(
           order: entry.key + 1,
           action: entry.value,
@@ -424,7 +425,7 @@ class RecommendationEngineService {
       priority: ActionPriority.low,
       title: 'Zvážit zlepšení kvality',
       description: 'Analýza je možná, ale výsledky mohou být méně přesné',
-      steps: preAnalysisResult.recommendations.take(2).asMap().entries.map((entry) {
+      steps: preAnalysisResult.recommendations.take(2).toList().asMap().entries.map((entry) {
         return RecommendationStep(
           order: entry.key + 1,
           action: entry.value,

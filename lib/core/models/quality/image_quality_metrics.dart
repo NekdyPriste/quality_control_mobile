@@ -36,6 +36,20 @@ class ImageQualityMetrics {
     );
   }
 
+  factory ImageQualityMetrics.defaultMetrics() {
+    return const ImageQualityMetrics(
+      sharpness: 0.5,
+      brightness: 0.5,
+      contrast: 0.5,
+      noiseLevel: 0.3,
+      resolution: 0.7,
+      compression: 0.8,
+      objectCoverage: 0.6,
+      edgeClarity: 0.5,
+      overallScore: 0.55,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'sharpness': sharpness,

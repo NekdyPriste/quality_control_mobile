@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'features/part_type_selection/part_type_screen.dart';
 import 'features/demo/demo_capture_screen.dart';
 import 'features/history/inspection_history_screen.dart';
@@ -13,9 +15,15 @@ import 'core/services/background_batch_service.dart'
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Inicializace SQLite pro web platformu
+  if (kIsWeb) {
+    // Nastavení databáze pro web
+    databaseFactory = databaseFactoryFfiWeb;
+  }
+
   // WorkManager je podporován jen na mobilních platformách
-  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || 
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS)) {
     try {
       BackgroundBatchService.initialize();

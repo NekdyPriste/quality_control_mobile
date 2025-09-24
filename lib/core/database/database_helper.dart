@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/quality_report.dart';
 import '../models/comparison_result.dart';
 import '../models/defect.dart';
@@ -15,13 +16,19 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
+
+    // Pro web platformu vracíme mock database
+    if (kIsWeb) {
+      throw UnsupportedError('SQLite není podporován na web platformě. Použij demo režim bez ukládání.');
+    }
+
     _database = await _initDatabase();
     return _database!;
   }
 
   Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'quality_control.db');
-    
+
     return await openDatabase(
       path,
       version: 2, // Increased version for Enhanced Confidence System
@@ -138,6 +145,11 @@ class DatabaseHelper {
     String? batchNumber,
     String? partSerial,
   }) async {
+    // Web fallback - vrácíme dummy ID
+    if (kIsWeb) {
+      print('Web platform: Simulované uložení inspekce (ID: ${DateTime.now().millisecondsSinceEpoch})');
+      return DateTime.now().millisecondsSinceEpoch;
+    }
     final db = await database;
     
     // Uložení hlavního záznamu
@@ -176,6 +188,12 @@ class DatabaseHelper {
 
   // Načtení všech inspekcí
   Future<List<QualityReport>> getAllInspections({int? limit}) async {
+    // Web fallback - vrácíme prázdný seznam
+    if (kIsWeb) {
+      print('Web platform: Vrácen prázdný seznam inspekcí (žádná data v demo režimu)');
+      return <QualityReport>[];
+    }
+
     final db = await database;
     
     final maps = await db.query(
