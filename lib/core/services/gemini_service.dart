@@ -4,13 +4,13 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/comparison_result.dart';
 import '../models/quality_report.dart';
 import '../models/defect.dart';
 import '../utils/api_constants.dart';
+import '../utils/secure_http_client.dart';
 
 // Custom exception class pro lepší error handling
 class GeminiServiceException implements Exception {
@@ -29,6 +29,8 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
 });
 
 class GeminiService {
+  final SecureHttpClient _secureHttpClient = SecureHttpClient();
+  
   Future<String> getCurrentModel() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('selected_gemini_model') ?? ApiConstants.defaultModel;
@@ -56,12 +58,13 @@ class GeminiService {
       // Použití správného API klíče (secure storage nebo fallback)
       final finalApiKey = apiKey ?? ApiConstants.fallbackApiKey;
       
-      final response = await http.get(
+      final secureClient = SecureHttpClient();
+      final response = await secureClient.get(
         Uri.parse('${ApiConstants.geminiBaseUrl}/models/$selectedModel'),
         headers: {
           'x-goog-api-key': finalApiKey,
         },
-      ).timeout(const Duration(seconds: 10));
+      );
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -247,14 +250,14 @@ PRAVIDLA:
       final selectedModel = await getCurrentModel();
       final endpoint = ApiConstants.generateContentEndpoint(selectedModel);
       
-      final response = await http.post(
+      final response = await _secureHttpClient.post(
         Uri.parse('${ApiConstants.geminiBaseUrl}$endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
         body: jsonEncode(requestBody),
-      ).timeout(ApiConstants.requestTimeout);
+      );
 
       if (response.statusCode == 200) {
         try {

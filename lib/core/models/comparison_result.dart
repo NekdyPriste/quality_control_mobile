@@ -1,26 +1,14 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'defect.dart';
 
-part 'comparison_result.g.dart';
-
 enum QualityStatus {
-  @JsonValue('PASS')
   pass,
-  @JsonValue('FAIL')
   fail,
-  @JsonValue('WARNING')
   warning,
 }
 
-@JsonSerializable()
 class ComparisonResult {
-  @JsonKey(name: 'overall_quality')
   final QualityStatus overallQuality;
-  
-  @JsonKey(name: 'confidence_score')
   final double confidenceScore;
-  
-  @JsonKey(name: 'defects_found')
   final List<Defect> defectsFound;
   
   final String summary;
@@ -32,10 +20,25 @@ class ComparisonResult {
     required this.summary,
   });
 
-  factory ComparisonResult.fromJson(Map<String, dynamic> json) =>
-      _$ComparisonResultFromJson(json);
+  factory ComparisonResult.fromJson(Map<String, dynamic> json) {
+    return ComparisonResult(
+      overallQuality: QualityStatus.values.firstWhere((e) => e.name == json['overall_quality'] || e.name.toUpperCase() == json['overall_quality']),
+      confidenceScore: (json['confidence_score'] as num).toDouble(),
+      defectsFound: (json['defects_found'] as List<dynamic>)
+          .map((e) => Defect.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      summary: json['summary'] as String,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$ComparisonResultToJson(this);
+  Map<String, dynamic> toJson() {
+    return {
+      'overall_quality': overallQuality.name.toUpperCase(),
+      'confidence_score': confidenceScore,
+      'defects_found': defectsFound.map((e) => e.toJson()).toList(),
+      'summary': summary,
+    };
+  }
 
   bool get hasDefects => defectsFound.isNotEmpty;
   

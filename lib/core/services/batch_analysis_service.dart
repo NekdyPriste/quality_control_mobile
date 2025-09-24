@@ -99,7 +99,7 @@ class BatchAnalysisService {
             partSerial: photoPair.partSerial,
           );
           
-          final qualityReport = QualityReport(
+          final qualityReport = QualityReport.legacy(
             id: inspectionId,
             referenceImagePath: photoPair.referenceImagePath,
             partImagePath: photoPair.partImagePath,
@@ -181,10 +181,10 @@ class BatchAnalysisService {
     for (int i = 0; i < job.completedReports.length; i++) {
       final report = job.completedReports[i];
       buffer.writeln('### Part ${i + 1}');
-      buffer.writeln('- **Result:** ${report.comparisonResult.overallQuality.name.toUpperCase()}');
-      buffer.writeln('- **Confidence:** ${(report.comparisonResult.confidenceScore * 100).toStringAsFixed(1)}%');
-      buffer.writeln('- **Defects:** ${report.comparisonResult.defectsFound.length}');
-      buffer.writeln('- **Summary:** ${report.comparisonResult.summary}');
+      buffer.writeln('- **Result:** ${(report.comparisonResult?.overallQuality.name ?? 'UNKNOWN').toUpperCase()}');
+      buffer.writeln('- **Confidence:** ${((report.comparisonResult?.confidenceScore ?? 0.0) * 100).toStringAsFixed(1)}%');
+      buffer.writeln('- **Defects:** ${report.comparisonResult?.defectsFound.length ?? 0}');
+      buffer.writeln('- **Summary:** ${report.comparisonResult?.summary ?? 'N/A'}');
       buffer.writeln();
     }
     
@@ -210,7 +210,7 @@ class BatchAnalysisService {
         inspectionId: 0, // Batch job doesn't have single inspection ID
         recipientEmail: recipientEmail,
         partType: PartType.vylisky, // Default, could be mixed in batch
-        comparisonResult: firstReport.comparisonResult,
+        comparisonResult: firstReport.comparisonResult!,
         operatorName: job.operatorName,
       );
     }

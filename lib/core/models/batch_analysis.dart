@@ -63,15 +63,15 @@ class BatchAnalysisJob {
     totalPairs > 0 ? (completedPairs + failedPairs) / totalPairs * 100 : 0;
 
   int get passCount => completedReports
-    .where((r) => r.comparisonResult.overallQuality == QualityStatus.pass)
+    .where((r) => r.comparisonResult?.overallQuality == QualityStatus.pass)
     .length;
 
   int get failCount => completedReports
-    .where((r) => r.comparisonResult.overallQuality == QualityStatus.fail)
+    .where((r) => r.comparisonResult?.overallQuality == QualityStatus.fail)
     .length;
 
   int get warningCount => completedReports
-    .where((r) => r.comparisonResult.overallQuality == QualityStatus.warning)
+    .where((r) => r.comparisonResult?.overallQuality == QualityStatus.warning)
     .length;
 
 

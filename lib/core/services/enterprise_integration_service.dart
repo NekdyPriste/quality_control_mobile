@@ -32,15 +32,15 @@ class EnterpriseIntegrationService {
         'work_order': workOrderNumber,
         'article_number': articleNumber,
         'inspection_id': report.id,
-        'timestamp': report.createdAt.toIso8601String(),
-        'part_type': _mapPartTypeToERP(report.partType),
-        'quality_result': _mapQualityStatusToERP(report.comparisonResult.overallQuality),
-        'confidence_score': report.comparisonResult.confidenceScore,
-        'defects_count': report.comparisonResult.defectsFound.length,
-        'defects_summary': report.comparisonResult.summary,
-        'critical_defects': report.comparisonResult.criticalDefects,
-        'major_defects': report.comparisonResult.majorDefects,
-        'minor_defects': report.comparisonResult.minorDefects,
+        'timestamp': report.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'part_type': _mapPartTypeToERP(report.partType ?? PartType.vylisky),
+        'quality_result': _mapQualityStatusToERP(report.comparisonResult?.overallQuality ?? QualityStatus.fail),
+        'confidence_score': report.comparisonResult?.confidenceScore ?? 0.0,
+        'defects_count': report.comparisonResult?.defectsFound.length ?? 0,
+        'defects_summary': report.comparisonResult?.summary ?? 'N/A',
+        'critical_defects': report.comparisonResult?.criticalDefects ?? 0,
+        'major_defects': report.comparisonResult?.majorDefects ?? 0,
+        'minor_defects': report.comparisonResult?.minorDefects ?? 0,
         'operator': 'QC_APP_USER',
         'equipment': 'QUALITY_CONTROL_STATION_01',
       };
@@ -80,12 +80,12 @@ class EnterpriseIntegrationService {
         'production_line_id': productionLineId,
         'batch_number': batchNumber,
         'part_serial': partSerialNumber,
-        'inspection_timestamp': report.createdAt.toIso8601String(),
-        'quality_gate_result': report.comparisonResult.overallQuality == QualityStatus.pass ? 'PASS' : 'FAIL',
+        'inspection_timestamp': report.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'quality_gate_result': (report.comparisonResult?.overallQuality ?? QualityStatus.fail) == QualityStatus.pass ? 'PASS' : 'FAIL',
         'ai_analysis': {
           'model_version': 'gemini-2.5-pro',
-          'confidence': report.comparisonResult.confidenceScore,
-          'defects': report.comparisonResult.defectsFound.map((d) => {
+          'confidence': report.comparisonResult?.confidenceScore ?? 0.0,
+          'defects': (report.comparisonResult?.defectsFound ?? []).map((d) => {
             'type': d.type.toString(),
             'severity': d.severity.toString(),
             'description': d.description,
@@ -99,9 +99,9 @@ class EnterpriseIntegrationService {
           }).toList(),
         },
         'process_control': {
-          'action_required': report.comparisonResult.overallQuality == QualityStatus.fail,
-          'stop_production': report.comparisonResult.criticalDefects > 0,
-          'alert_supervisor': report.comparisonResult.criticalDefects > 0 || report.comparisonResult.majorDefects > 2,
+          'action_required': (report.comparisonResult?.overallQuality ?? QualityStatus.fail) == QualityStatus.fail,
+          'stop_production': (report.comparisonResult?.criticalDefects ?? 0) > 0,
+          'alert_supervisor': (report.comparisonResult?.criticalDefects ?? 0) > 0 || (report.comparisonResult?.majorDefects ?? 0) > 2,
         }
       };
 
@@ -131,7 +131,7 @@ class EnterpriseIntegrationService {
       final qmsData = {
         'inspection_record': {
           'id': report.id,
-          'timestamp': report.createdAt.toIso8601String(),
+          'timestamp': report.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
           'inspector_id': inspectorId,
           'certification_level': certificationLevel,
           'inspection_method': 'AI_VISION_ANALYSIS',
@@ -139,9 +139,9 @@ class EnterpriseIntegrationService {
           'environmental_conditions': 'NORMAL',
         },
         'quality_assessment': {
-          'result': _mapQualityStatusToQMS(report.comparisonResult.overallQuality),
-          'confidence_level': _mapConfidenceToQMSLevel(report.comparisonResult.confidenceScore),
-          'defect_classification': report.comparisonResult.defectsFound.map((d) => {
+          'result': _mapQualityStatusToQMS(report.comparisonResult?.overallQuality ?? QualityStatus.fail),
+          'confidence_level': _mapConfidenceToQMSLevel(report.comparisonResult?.confidenceScore ?? 0.0),
+          'defect_classification': (report.comparisonResult?.defectsFound ?? []).map((d) => {
             'class': _mapDefectTypeToQMS(d.type),
             'severity': _mapDefectSeverityToQMS(d.severity),
             'location': 'X${(d.location.x * 100).round()}Y${(d.location.y * 100).round()}',
@@ -191,15 +191,15 @@ class EnterpriseIntegrationService {
         },
         'quality_data': reports.map((report) => {
           'inspection_id': report.id,
-          'timestamp': report.createdAt.toIso8601String(),
-          'part_type': report.partType.toString(),
-          'result': report.comparisonResult.overallQuality.toString(),
-          'confidence': report.comparisonResult.confidenceScore,
+          'timestamp': report.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+          'part_type': (report.partType ?? PartType.vylisky).toString(),
+          'result': (report.comparisonResult?.overallQuality ?? QualityStatus.fail).toString(),
+          'confidence': report.comparisonResult?.confidenceScore ?? 0.0,
           'defects_summary': {
-            'total': report.comparisonResult.defectsFound.length,
-            'critical': report.comparisonResult.criticalDefects,
-            'major': report.comparisonResult.majorDefects,
-            'minor': report.comparisonResult.minorDefects,
+            'total': report.comparisonResult?.defectsFound.length ?? 0,
+            'critical': report.comparisonResult?.criticalDefects ?? 0,
+            'major': report.comparisonResult?.majorDefects ?? 0,
+            'minor': report.comparisonResult?.minorDefects ?? 0,
           },
           'ai_metrics': {
             'model': 'gemini-2.5-pro',

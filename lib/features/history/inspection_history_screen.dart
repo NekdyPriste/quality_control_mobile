@@ -53,11 +53,11 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
   List<QualityReport> get _filteredInspections {
     switch (_selectedFilter) {
       case 'PASS':
-        return _inspections.where((i) => i.comparisonResult.overallQuality == QualityStatus.pass).toList();
+        return _inspections.where((i) => i.comparisonResult?.overallQuality == QualityStatus.pass).toList();
       case 'FAIL':
-        return _inspections.where((i) => i.comparisonResult.overallQuality == QualityStatus.fail).toList();
+        return _inspections.where((i) => i.comparisonResult?.overallQuality == QualityStatus.fail).toList();
       case 'WARNING':
-        return _inspections.where((i) => i.comparisonResult.overallQuality == QualityStatus.warning).toList();
+        return _inspections.where((i) => i.comparisonResult?.overallQuality == QualityStatus.warning).toList();
       default:
         return _inspections;
     }
@@ -275,7 +275,7 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
 
   Widget _buildInspectionCard(QualityReport report) {
     final result = report.comparisonResult;
-    final statusColor = _getStatusColor(result.overallQuality);
+    final statusColor = _getStatusColor(result?.overallQuality ?? QualityStatus.fail);
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -341,7 +341,7 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
                     color: Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
-                  Text('Spolehlivost: ${(result.confidenceScore * 100).round()}%'),
+                  Text('Spolehlivost: ${((result?.confidenceScore ?? 0.0) * 100).round()}%'),
                   const SizedBox(width: 16),
                   Icon(
                     Icons.bug_report,
@@ -349,15 +349,15 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
                     color: Colors.grey[600],
                   ),
                   const SizedBox(width: 4),
-                  Text('Defekty: ${result.defectsFound.length}'),
+                  Text('Defekty: ${result?.defectsFound.length ?? 0}'),
                 ],
               ),
-              if (result.hasDefects) ...[
+              if (result?.hasDefects ?? false) ...[
                 const SizedBox(height: 8),
                 Text(
-                  result.summary.length > 100 
-                      ? '${result.summary.substring(0, 100)}...'
-                      : result.summary,
+                  (result?.summary ?? '').length > 100 
+                      ? '${(result?.summary ?? '').substring(0, 100)}...'
+                      : result?.summary ?? '',
                   style: const TextStyle(color: Colors.grey),
                 ),
               ],
@@ -365,15 +365,15 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (result.criticalDefects > 0)
-                    _buildDefectBadge('${result.criticalDefects} kritické', Colors.red),
-                  if (result.majorDefects > 0) ...[
+                  if ((result?.criticalDefects ?? 0) > 0)
+                    _buildDefectBadge('${result?.criticalDefects ?? 0} kritické', Colors.red),
+                  if ((result?.majorDefects ?? 0) > 0) ...[
                     const SizedBox(width: 4),
-                    _buildDefectBadge('${result.majorDefects} závažné', Colors.orange),
+                    _buildDefectBadge('${result?.majorDefects ?? 0} závažné', Colors.orange),
                   ],
-                  if (result.minorDefects > 0) ...[
+                  if ((result?.minorDefects ?? 0) > 0) ...[
                     const SizedBox(width: 4),
-                    _buildDefectBadge('${result.minorDefects} menší', Colors.yellow[700]!),
+                    _buildDefectBadge('${result?.minorDefects ?? 0} menší', Colors.yellow[700]!),
                   ],
                 ],
               ),
@@ -398,7 +398,7 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
     );
   }
 
-  Color _getStatusColor(QualityStatus status) {
+  Color _getStatusColor(QualityStatus? status) {
     switch (status) {
       case QualityStatus.pass:
         return Colors.green;
@@ -406,10 +406,13 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
         return Colors.red;
       case QualityStatus.warning:
         return Colors.orange;
+      case null:
+        return Colors.grey;
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return 'N/A';
     return '${dateTime.day}.${dateTime.month}.${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
@@ -426,18 +429,18 @@ class _InspectionHistoryScreenState extends ConsumerState<InspectionHistoryScree
               Text('Typ dílu: ${report.partTypeDisplayName}'),
               Text('Datum: ${_formatDateTime(report.createdAt)}'),
               Text('Výsledek: ${report.statusDisplayName}'),
-              Text('Spolehlivost: ${(report.comparisonResult.confidenceScore * 100).round()}%'),
+              Text('Spolehlivost: ${((report.comparisonResult?.confidenceScore ?? 0.0) * 100).round()}%'),
               const SizedBox(height: 16),
-              if (report.comparisonResult.hasDefects) ...[
+              if (report.comparisonResult?.hasDefects ?? false) ...[
                 const Text('Defekty:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                ...report.comparisonResult.defectsFound.map((defect) => Padding(
+                ...(report.comparisonResult?.defectsFound ?? []).map((defect) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text('• ${defect.description}'),
                 )),
               ],
               const SizedBox(height: 16),
-              Text('Shrnutí: ${report.comparisonResult.summary}'),
+              Text('Shrnutí: ${report.comparisonResult?.summary ?? 'N/A'}'),
             ],
           ),
         ),

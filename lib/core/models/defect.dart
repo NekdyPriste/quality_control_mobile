@@ -1,28 +1,16 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'defect.g.dart';
-
 enum DefectType {
-  @JsonValue('MISSING')
   missing,
-  @JsonValue('EXTRA')  
   extra,
-  @JsonValue('DEFORMED')
   deformed,
-  @JsonValue('DIMENSIONAL')
   dimensional,
 }
 
 enum DefectSeverity {
-  @JsonValue('CRITICAL')
   critical,
-  @JsonValue('MAJOR')
   major,
-  @JsonValue('MINOR')
   minor,
 }
 
-@JsonSerializable()
 class DefectLocation {
   final double x;
   final double y; 
@@ -36,13 +24,25 @@ class DefectLocation {
     required this.height,
   });
 
-  factory DefectLocation.fromJson(Map<String, dynamic> json) =>
-      _$DefectLocationFromJson(json);
+  factory DefectLocation.fromJson(Map<String, dynamic> json) {
+    return DefectLocation(
+      x: (json['x'] as num).toDouble(),
+      y: (json['y'] as num).toDouble(),
+      width: (json['width'] as num).toDouble(),
+      height: (json['height'] as num).toDouble(),
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$DefectLocationToJson(this);
+  Map<String, dynamic> toJson() {
+    return {
+      'x': x,
+      'y': y,
+      'width': width,
+      'height': height,
+    };
+  }
 }
 
-@JsonSerializable()
 class Defect {
   final DefectType type;
   final String description;
@@ -58,7 +58,23 @@ class Defect {
     required this.confidence,
   });
 
-  factory Defect.fromJson(Map<String, dynamic> json) => _$DefectFromJson(json);
+  factory Defect.fromJson(Map<String, dynamic> json) {
+    return Defect(
+      type: DefectType.values.firstWhere((e) => e.name.toUpperCase() == json['type'] || e.name == json['type']),
+      description: json['description'] as String,
+      severity: DefectSeverity.values.firstWhere((e) => e.name.toUpperCase() == json['severity'] || e.name == json['severity']),
+      location: DefectLocation.fromJson(json['location'] as Map<String, dynamic>),
+      confidence: (json['confidence'] as num).toDouble(),
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$DefectToJson(this);
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.name.toUpperCase(),
+      'description': description,
+      'severity': severity.name.toUpperCase(),
+      'location': location.toJson(),
+      'confidence': confidence,
+    };
+  }
 }

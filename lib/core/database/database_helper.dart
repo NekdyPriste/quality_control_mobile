@@ -24,8 +24,9 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Increased version for Enhanced Confidence System
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -83,6 +84,47 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_inspections_created_at ON inspections(created_at)');
     await db.execute('CREATE INDEX idx_inspections_part_type ON inspections(part_type)');
     await db.execute('CREATE INDEX idx_inspections_overall_result ON inspections(overall_result)');
+
+    // Enhanced Analysis Records (version 2+)
+    if (version >= 2) {
+      await _createEnhancedAnalysisRecordsTable(db);
+    }
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2 && newVersion >= 2) {
+      // Migration to version 2: Add Enhanced Analysis Records
+      await _createEnhancedAnalysisRecordsTable(db);
+    }
+  }
+
+  Future<void> _createEnhancedAnalysisRecordsTable(Database db) async {
+    // Tabulka enhanced_analysis_records - kompletní enhanced confidence system záznamy
+    await db.execute('''
+      CREATE TABLE enhanced_analysis_records (
+        id TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        status TEXT NOT NULL CHECK(status IN ('initialized', 'qualityAnalyzed', 'confidenceCalculated', 'recommendationGenerated', 'aiAnalysisStarted', 'aiAnalysisCompleted', 'feedbackReceived', 'archived', 'failed')),
+        user_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        reference_image_path TEXT NOT NULL,
+        part_image_path TEXT NOT NULL,
+        overall_confidence REAL,
+        processing_time_ms INTEGER,
+        tokens_used INTEGER,
+        estimated_cost REAL,
+        was_recommendation_followed INTEGER DEFAULT 0,
+        record_data TEXT NOT NULL
+      )
+    ''');
+
+    // Indexy pro enhanced analysis records
+    await db.execute('CREATE INDEX idx_enhanced_records_created_at ON enhanced_analysis_records(created_at)');
+    await db.execute('CREATE INDEX idx_enhanced_records_user_id ON enhanced_analysis_records(user_id)');
+    await db.execute('CREATE INDEX idx_enhanced_records_status ON enhanced_analysis_records(status)');
+    await db.execute('CREATE INDEX idx_enhanced_records_overall_confidence ON enhanced_analysis_records(overall_confidence)');
+    await db.execute('CREATE INDEX idx_enhanced_records_session_id ON enhanced_analysis_records(session_id)');
   }
 
   // Uložení kompletní inspekce
@@ -153,7 +195,7 @@ class DatabaseHelper {
         summary: map['summary'] as String,
       );
 
-      reports.add(QualityReport(
+      reports.add(QualityReport.legacy(
         id: map['id'] as int,
         referenceImagePath: map['reference_image_path'] as String,
         partImagePath: map['part_image_path'] as String,
