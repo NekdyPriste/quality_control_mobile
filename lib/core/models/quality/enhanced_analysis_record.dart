@@ -707,10 +707,3 @@ class ImprovementSuggestion {
   }
 }
 
-enum ImprovementCategory {
-  imageQuality,        // Kvalita snímků
-  analysisConfidence,  // Jistota analýzy
-  modelPerformance,    // Výkon modelu
-  userExperience,      // Uživatelský zážitek
-  performance          // Rychlost a výkon
-}

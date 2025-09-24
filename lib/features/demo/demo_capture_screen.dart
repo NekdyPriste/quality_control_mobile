@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/models/quality_report.dart';
-import '../analysis/analysis_screen.dart';
+import '../analysis/enhanced_analysis_screen.dart';
 
 class DemoCaptureScreen extends StatefulWidget {
   final PartType partType;
@@ -294,7 +294,7 @@ class _DemoCaptureScreenState extends State<DemoCaptureScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AnalysisScreen(
+        builder: (context) => EnhancedAnalysisScreen(
           partType: widget.partType,
           referenceImagePath: _referenceImagePath!,
           partImagePath: _partImagePath!,

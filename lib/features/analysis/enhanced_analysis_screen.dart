@@ -8,13 +8,13 @@ import '../../core/models/quality/enhanced_confidence_score.dart';
 import '../../core/models/quality/action_recommendation.dart';
 import '../../core/models/quality/pre_analysis_result.dart';
 import '../../core/services/quality/enhanced_gemini_service.dart';
-import '../results/enhanced_results_screen.dart';
+import '../results/results_screen.dart';
 
 class EnhancedAnalysisScreen extends ConsumerStatefulWidget {
   final PartType partType;
   final String referenceImagePath;
   final String partImagePath;
-  final String userId;
+  final String? userId;
   final AnalysisComplexity complexity;
 
   const EnhancedAnalysisScreen({
@@ -22,7 +22,7 @@ class EnhancedAnalysisScreen extends ConsumerStatefulWidget {
     required this.partType,
     required this.referenceImagePath,
     required this.partImagePath,
-    required this.userId,
+    this.userId,
     this.complexity = AnalysisComplexity.moderate,
   });
 
@@ -86,7 +86,7 @@ class _EnhancedAnalysisScreenState extends ConsumerState<EnhancedAnalysisScreen>
         referenceImage: File(widget.referenceImagePath),
         partImage: File(widget.partImagePath),
         partType: widget.partType,
-        userId: widget.userId,
+        userId: widget.userId ?? 'anonymous',
         complexity: widget.complexity,
       );
 

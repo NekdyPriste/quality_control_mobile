@@ -199,32 +199,32 @@ class RecommendationEngineService {
   ) async {
     switch (issueType) {
       case QualityIssueType.blur:
-        return ActionRecommendation._createBlurRecommendation(
+        return _createBlurRecommendationForService(
           severity,
           confidenceScore,
         );
       case QualityIssueType.lighting:
-        return ActionRecommendation._createLightingRecommendation(
+        return _createLightingRecommendationForService(
           severity,
           confidenceScore,
         );
       case QualityIssueType.contrast:
-        return ActionRecommendation._createContrastRecommendation(
+        return _createContrastRecommendationForService(
           severity,
           confidenceScore,
         );
       case QualityIssueType.noise:
-        return ActionRecommendation._createNoiseRecommendation(
+        return _createNoiseRecommendationForService(
           severity,
           confidenceScore,
         );
       case QualityIssueType.resolution:
-        return ActionRecommendation._createResolutionRecommendation(
+        return _createResolutionRecommendationForService(
           severity,
           confidenceScore,
         );
       case QualityIssueType.objectSize:
-        return ActionRecommendation._createObjectSizeRecommendation(
+        return _createObjectSizeRecommendationForService(
           severity,
           confidenceScore,
         );
@@ -609,5 +609,186 @@ class RecommendationEngineService {
 
     // Vrátí top 5 doporučení
     return sorted.take(5).toList();
+  }
+
+  // Service-specific recommendation creation methods
+  ActionRecommendation? _createBlurRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    final priority = severity == IssueSeverity.critical 
+        ? ActionPriority.critical 
+        : severity == IssueSeverity.major 
+            ? ActionPriority.high 
+            : ActionPriority.medium;
+
+    return ActionRecommendation(
+      type: RecommendationType.retakePhoto,
+      priority: priority,
+      title: 'Zlepšit ostrost snímku',
+      description: 'Snímek je rozmazaný, což výrazně snižuje přesnost AI analýzy',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Vyčistěte objektiv kamery',
+          details: 'Použijte měkký hadřík nebo čistící ubrousek',
+          estimatedTime: Duration(seconds: 30),
+        ),
+        RecommendationStep(
+          order: 2,
+          action: 'Aktivujte autofocus',
+          details: 'Klepněte na objekt na obrazovce před pořízením snímku',
+          estimatedTime: Duration(seconds: 5),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.3,
+        qualityIncrease: 0.4,
+        successProbability: 0.85,
+      ),
+      estimatedTime: Duration(minutes: 1),
+      requiredResources: ['Čistý hadřík', 'Stabilní povrch'],
+      category: RecommendationCategory.imageCapture,
+    );
+  }
+
+  ActionRecommendation? _createLightingRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    return ActionRecommendation(
+      type: RecommendationType.improveConditions,
+      priority: ActionPriority.high,
+      title: 'Zlepšit osvětlení',
+      description: 'Nevhodné osvětlení snižuje viditelnost detailů',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Přemístěte se k oknu',
+          details: 'Využijte přirozené světlo, ale vyhněte se přímým paprskům',
+          estimatedTime: Duration(seconds: 30),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.25,
+        qualityIncrease: 0.35,
+        successProbability: 0.80,
+      ),
+      estimatedTime: Duration(minutes: 2),
+      requiredResources: ['Dodatečné osvětlení'],
+      category: RecommendationCategory.environment,
+    );
+  }
+
+  ActionRecommendation? _createContrastRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    return ActionRecommendation(
+      type: RecommendationType.changeBackground,
+      priority: ActionPriority.medium,
+      title: 'Zvýšit kontrast',
+      description: 'Nízký kontrast ztěžuje rozlišení detailů objektu',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Použijte kontrastní pozadí',
+          details: 'Světlý objekt na tmavé pozadí nebo naopak',
+          estimatedTime: Duration(minutes: 1),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.20,
+        qualityIncrease: 0.30,
+        successProbability: 0.75,
+      ),
+      estimatedTime: Duration(minutes: 2),
+      requiredResources: ['Kontrastní materiál'],
+      category: RecommendationCategory.setup,
+    );
+  }
+
+  ActionRecommendation? _createNoiseRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    return ActionRecommendation(
+      type: RecommendationType.improveConditions,
+      priority: ActionPriority.medium,
+      title: 'Snížit šum obrazu',
+      description: 'Vysoký šum v obraze snižuje přesnost detekce',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Zlepšete osvětlení',
+          details: 'Více světla umožní nižší ISO a méně šumu',
+          estimatedTime: Duration(seconds: 45),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.15,
+        qualityIncrease: 0.25,
+        successProbability: 0.70,
+      ),
+      estimatedTime: Duration(minutes: 1),
+      requiredResources: ['Lepší osvětlení'],
+      category: RecommendationCategory.technical,
+    );
+  }
+
+  ActionRecommendation? _createResolutionRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    return ActionRecommendation(
+      type: RecommendationType.adjustSettings,
+      priority: ActionPriority.high,
+      title: 'Zvýšit rozlišení',
+      description: 'Nízké rozlišení omezuje možnosti analýzy detailů',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Zkontrolujte nastavení kamery',
+          details: 'Nastavte nejvyšší dostupné rozlišení',
+          estimatedTime: Duration(seconds: 30),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.35,
+        qualityIncrease: 0.45,
+        successProbability: 0.90,
+      ),
+      estimatedTime: Duration(seconds: 50),
+      requiredResources: ['Nastavení kamery'],
+      category: RecommendationCategory.technical,
+    );
+  }
+
+  ActionRecommendation? _createObjectSizeRecommendationForService(
+    IssueSeverity severity,
+    EnhancedConfidenceScore confidenceScore,
+  ) {
+    return ActionRecommendation(
+      type: RecommendationType.repositionCamera,
+      priority: ActionPriority.high,
+      title: 'Zlepšit kompozici snímku',
+      description: 'Objekt zabírá málo prostoru, což ztěžuje analýzu',
+      steps: [
+        RecommendationStep(
+          order: 1,
+          action: 'Přibližte kameru k objektu',
+          details: 'Objekt by měl zabírat alespoň 50% plochy snímku',
+          estimatedTime: Duration(seconds: 30),
+        ),
+      ],
+      expectedImprovement: EstimatedImprovement(
+        confidenceIncrease: 0.25,
+        qualityIncrease: 0.30,
+        successProbability: 0.85,
+      ),
+      estimatedTime: Duration(seconds: 45),
+      requiredResources: [],
+      category: RecommendationCategory.positioning,
+    );
   }
 }

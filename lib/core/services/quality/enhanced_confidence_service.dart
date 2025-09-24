@@ -5,6 +5,7 @@ import '../../models/quality/image_quality_metrics.dart';
 import '../../models/quality/enhanced_confidence_score.dart';
 import '../../models/quality/pre_analysis_result.dart';
 import '../../models/comparison_result.dart';
+import '../../models/defect.dart';
 import 'image_quality_analyzer_service.dart';
 
 final enhancedConfidenceServiceProvider = Provider<EnhancedConfidenceService>((ref) {
@@ -311,11 +312,11 @@ class EnhancedConfidenceService {
   Future<ModelPerformanceHistory?> getModelPerformanceHistory() async {
     // V reálné implementaci by se načetla z databáze
     // Pro teď vrací mock data
-    return const ModelPerformanceHistory(
+    return ModelPerformanceHistory(
       totalAnalyses: 150,
       successfulAnalyses: 127,
       recentAccuracy: 0.85,
-      lastUpdated: null, // DateTime.now() místo null v reálné implementaci
+      lastUpdated: DateTime.now(), // Fixed null safety issue
     );
   }
 

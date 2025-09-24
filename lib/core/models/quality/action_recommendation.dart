@@ -310,6 +310,7 @@ class ActionRecommendation {
     );
   }
 
+
   factory ActionRecommendation.defaultRecommendation(
     EnhancedConfidenceScore confidenceScore,
   ) {

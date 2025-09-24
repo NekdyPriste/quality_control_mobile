@@ -5,7 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/models/quality_report.dart';
 import '../../core/services/camera_service.dart';
-import '../analysis/analysis_screen.dart';
+import '../analysis/enhanced_analysis_screen.dart';
 
 class PartCaptureScreen extends ConsumerStatefulWidget {
   final PartType partType;
@@ -113,7 +113,7 @@ class _PartCaptureScreenState extends ConsumerState<PartCaptureScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => AnalysisScreen(
+          builder: (context) => EnhancedAnalysisScreen(
             partType: widget.partType,
             referenceImagePath: widget.referenceImagePath,
             partImagePath: _capturedImage!.path,

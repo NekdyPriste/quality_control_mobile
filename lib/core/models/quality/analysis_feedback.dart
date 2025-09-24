@@ -454,3 +454,11 @@ enum QualityFeedbackType {
   inaccurate,         // Hodnocení bylo nepřesné
   partiallyAccurate   // Hodnocení bylo částečně přesné
 }
+
+enum ImprovementCategory {
+  imageQuality,       // Kvalita snímků
+  analysisConfidence, // Jistota analýzy
+  modelPerformance,   // Výkonnost modelu
+  userExperience,     // Uživatelská zkušenost
+  performance        // Výkon systému
+}

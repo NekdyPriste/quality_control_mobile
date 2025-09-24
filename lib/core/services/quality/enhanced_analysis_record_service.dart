@@ -425,7 +425,7 @@ class EnhancedAnalysisRecordService {
       return _database!;
     }
 
-    _database = await DatabaseHelper.database;
+    _database = await DatabaseHelper().database;
     return _database!;
   }
 
