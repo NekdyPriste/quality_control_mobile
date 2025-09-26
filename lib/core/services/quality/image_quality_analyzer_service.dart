@@ -9,8 +9,8 @@ import '../../models/quality/image_quality_metrics.dart';
 import '../../models/quality/pre_analysis_result.dart';
 
 class ImageQualityAnalyzerService {
-  static const double _minAcceptableScore = 0.4;
-  static const double _goodQualityScore = 0.7;
+  static const double _minAcceptableScore = 0.2;
+  static const double _goodQualityScore = 0.5;
   
   // Váhy pro jednotlivé metriky při výpočtu celkového skóre
   static const Map<String, double> _metricWeights = {

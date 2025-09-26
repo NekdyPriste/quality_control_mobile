@@ -9,6 +9,7 @@ import 'features/history/inspection_history_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/batch/batch_analysis_screen.dart';
 import 'features/batch/background_jobs_screen.dart';
+import 'features/dataset/dataset_creation_screen.dart';
 import 'core/models/quality_report.dart';
 import 'core/services/background_batch_service.dart'
     if (dart.library.html) 'core/services/background_batch_service_stub.dart';
@@ -296,6 +297,25 @@ class HomeScreen extends StatelessWidget {
                         
                         _buildActionButton(
                           context: context,
+                          icon: Icons.dataset,
+                          title: 'Dataset Creation',
+                          subtitle: 'Tvorba trénovacích dat - označování chyb',
+                          color: const Color(0xFF4CAF50),
+                          textColor: Colors.white,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DatasetCreationScreen(),
+                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        _buildActionButton(
+                          context: context,
                           icon: Icons.science_outlined,
                           title: 'DEMO režim',
                           subtitle: 'Zkušební analýza s ukázkovými daty',
@@ -313,7 +333,7 @@ class HomeScreen extends StatelessWidget {
                             );
                           },
                         ),
-                        
+
                         const SizedBox(height: 40),
                       ],
                     ),

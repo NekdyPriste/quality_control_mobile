@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/batch_analysis.dart';
 import '../../core/models/quality_report.dart';
+import '../../core/models/quality/enhanced_confidence_score.dart';
 import '../../core/services/batch_analysis_service.dart';
 import '../../core/services/background_batch_service.dart';
+import '../../core/services/quality/batch_enhanced_analysis_service.dart';
+import 'widgets/batch_mode_selector.dart';
+import '../capture/unified_photo_capture_screen.dart';
 
 class BatchAnalysisScreen extends ConsumerStatefulWidget {
   const BatchAnalysisScreen({super.key});
@@ -19,12 +22,20 @@ class _BatchAnalysisScreenState extends ConsumerState<BatchAnalysisScreen> {
   final _batchNameController = TextEditingController();
   final _batchNumberController = TextEditingController();
   final List<BatchPhotoPair> _photoPairs = [];
-  final ImagePicker _picker = ImagePicker();
   
   bool _isProcessing = false;
   BatchAnalysisJob? _currentJob;
   String _operatorName = '';
   String _productionLine = '';
+
+  // Enhanced Analysis settings
+  bool _useEnhancedAnalysis = false;
+  AnalysisComplexity _enhancedComplexity = AnalysisComplexity.moderate;
+
+  // Batch modes
+  BatchMode _batchMode = BatchMode.multipleParts;
+  String _globalPartSerial = '';
+  PartType? _globalPartType;
 
   @override
   void initState() {
@@ -42,20 +53,43 @@ class _BatchAnalysisScreenState extends ConsumerState<BatchAnalysisScreen> {
 
   Future<void> _addPhotoPair() async {
     try {
-      // Nejprve referenční obrázek
-      final referenceImage = await _picker.pickImage(source: ImageSource.camera);
-      if (referenceImage == null) return;
+      // Určení typu dílu podle batch mode
+      PartType? partType;
+      String? partSerial;
 
-      // Dialog pro zadání typu dílu
-      final partType = await _showPartTypeDialog();
-      if (partType == null) return;
+      if (_batchMode == BatchMode.samePart) {
+        // Same part mode - použít global hodnoty
+        partType = _globalPartType;
+        partSerial = _globalPartSerial.isNotEmpty ? _globalPartSerial : null;
 
-      // Seriové číslo dílu (volitelné)
-      final partSerial = await _showPartSerialDialog();
+        if (partType == null) {
+          _showError('Vyberte typ dílu v Batch Mode nastavení');
+          return;
+        }
+      } else {
+        // Multiple parts mode - ptát se pro každý pár
+        partType = await _showPartTypeDialog();
+        if (partType == null) return;
 
-      // Potom obrázek dílu
-      final partImage = await _picker.pickImage(source: ImageSource.camera);
-      if (partImage == null) return;
+        partSerial = await _showPartSerialDialog();
+      }
+
+      // Použít unified photo capture screen pro oba snímky
+      final result = await Navigator.push<Map<String, File>>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UnifiedPhotoCaptureScreen(
+            title: 'Batch fotografování',
+            instruction: 'Vyfotografujte referenční a kontrolovaný díl',
+            captureTwo: true,
+          ),
+        ),
+      );
+
+      if (result == null) return;
+
+      final referenceImage = result['reference']!;
+      final partImage = result['part']!;
 
       final photoPair = BatchPhotoPair(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -342,6 +376,17 @@ class _BatchAnalysisScreenState extends ConsumerState<BatchAnalysisScreen> {
         children: [
           _buildJobInfoCard(),
           const SizedBox(height: 16),
+          BatchModeSelector(
+            selectedMode: _batchMode,
+            onModeChanged: (mode) => setState(() => _batchMode = mode),
+            globalPartSerial: _globalPartSerial,
+            onGlobalPartSerialChanged: (value) => setState(() => _globalPartSerial = value),
+            globalPartType: _globalPartType,
+            onGlobalPartTypeChanged: (type) => setState(() => _globalPartType = type),
+          ),
+          const SizedBox(height: 16),
+          _buildEnhancedAnalysisCard(),
+          const SizedBox(height: 16),
           _buildPhotoPairsCard(),
           const SizedBox(height: 24),
           if (_photoPairs.isNotEmpty) _buildStartButton(),
@@ -539,6 +584,133 @@ class _BatchAnalysisScreenState extends ConsumerState<BatchAnalysisScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildEnhancedAnalysisCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: Colors.deepPurple),
+                const SizedBox(width: 8),
+                const Text(
+                  'Enhanced Analysis',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Switch.adaptive(
+                  value: _useEnhancedAnalysis,
+                  onChanged: (value) {
+                    setState(() {
+                      _useEnhancedAnalysis = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            if (_useEnhancedAnalysis) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Složitost analýzy:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<AnalysisComplexity>(
+                value: _enhancedComplexity,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: AnalysisComplexity.values.map((complexity) {
+                  return DropdownMenuItem(
+                    value: complexity,
+                    child: Text(_getComplexityDisplayName(complexity)),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _enhancedComplexity = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🚀 ${_getComplexityDescription(_enhancedComplexity)}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getComplexityDetails(_enhancedComplexity),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text(
+                'Používá základní AI analýzu bez pokročilých confidence metrik.',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getComplexityDisplayName(AnalysisComplexity complexity) {
+    switch (complexity) {
+      case AnalysisComplexity.simple:
+        return 'Jednoduchá';
+      case AnalysisComplexity.moderate:
+        return 'Střední';
+      case AnalysisComplexity.complex:
+        return 'Složitá';
+      case AnalysisComplexity.extreme:
+        return 'Extrémní';
+    }
+  }
+
+  String _getComplexityDescription(AnalysisComplexity complexity) {
+    switch (complexity) {
+      case AnalysisComplexity.simple:
+        return 'Rychlá základní kontrola';
+      case AnalysisComplexity.moderate:
+        return 'Vyvážená analýza s dobrým poměrem rychlost/přesnost';
+      case AnalysisComplexity.complex:
+        return 'Detailní kontrola s pokročilými metrikami';
+      case AnalysisComplexity.extreme:
+        return 'Nejvyšší přesnost s kompletní analýzou';
+    }
+  }
+
+  String _getComplexityDetails(AnalysisComplexity complexity) {
+    switch (complexity) {
+      case AnalysisComplexity.simple:
+        return 'Rychlé zpracování, základní confidence score';
+      case AnalysisComplexity.moderate:
+        return 'Střední rychlost, multi-factor confidence, základní doporučení';
+      case AnalysisComplexity.complex:
+        return 'Pomalejší zpracování, pokročilé metriky, detailní doporučení';
+      case AnalysisComplexity.extreme:
+        return 'Nejpomalejší, kompletní analýza, expertní insights';
+    }
   }
 
   void _showSuccess(String message) {

@@ -1,12 +1,19 @@
-import 'dart:io';
 import 'quality_report.dart';
 import 'comparison_result.dart';
+import 'batch_enhanced_result.dart';
+import 'batch_overall_analysis.dart';
+import 'quality/enhanced_confidence_score.dart';
 
 enum BatchStatus {
   pending,
   processing,
   completed,
   failed
+}
+
+enum BatchMode {
+  samePart,      // Více fotografií stejného dílu
+  multipleParts  // Různé díly v jednom batchi
 }
 
 class BatchPhotoPair {
@@ -42,6 +49,12 @@ class BatchAnalysisJob {
   final String? operatorName;
   final String? productionLine;
   final String? batchNumber;
+
+  /// Enhanced Analysis fields
+  final bool useEnhancedAnalysis;
+  final AnalysisComplexity enhancedComplexity;
+  final List<BatchEnhancedResult> enhancedResults;
+  final BatchOverallAnalysis? overallAnalysis;
   
   const BatchAnalysisJob({
     required this.id,
@@ -57,6 +70,10 @@ class BatchAnalysisJob {
     this.operatorName,
     this.productionLine,
     this.batchNumber,
+    this.useEnhancedAnalysis = false,
+    this.enhancedComplexity = AnalysisComplexity.moderate,
+    this.enhancedResults = const [],
+    this.overallAnalysis,
   });
 
   double get progressPercentage => 
@@ -74,6 +91,45 @@ class BatchAnalysisJob {
     .where((r) => r.comparisonResult?.overallQuality == QualityStatus.warning)
     .length;
 
+  /// Enhanced Analysis getters
+  int get enhancedPassCount => enhancedResults
+    .where((r) => r.overallQuality == QualityStatus.pass)
+    .length;
+
+  int get enhancedFailCount => enhancedResults
+    .where((r) => r.overallQuality == QualityStatus.fail)
+    .length;
+
+  int get enhancedWarningCount => enhancedResults
+    .where((r) => r.overallQuality == QualityStatus.warning)
+    .length;
+
+  double get enhancedAverageConfidence {
+    final confidenceResults = enhancedResults
+      .where((r) => r.confidenceScore != null)
+      .toList();
+
+    if (confidenceResults.isEmpty) return 0.0;
+
+    return confidenceResults
+      .map((r) => r.confidenceScore!)
+      .reduce((a, b) => a + b) / confidenceResults.length;
+  }
+
+  Duration get totalEnhancedProcessingTime => enhancedResults
+    .map((r) => r.processingTime)
+    .fold(Duration.zero, (a, b) => a + b);
+
+  int get totalTokensUsed => enhancedResults
+    .where((r) => r.tokensUsed != null)
+    .map((r) => r.tokensUsed!)
+    .fold(0, (a, b) => a + b);
+
+  double get totalEstimatedCost => enhancedResults
+    .where((r) => r.estimatedCost != null)
+    .map((r) => r.estimatedCost!)
+    .fold(0.0, (a, b) => a + b);
+
 
   BatchAnalysisJob copyWith({
     String? id,
@@ -89,6 +145,10 @@ class BatchAnalysisJob {
     String? operatorName,
     String? productionLine,
     String? batchNumber,
+    bool? useEnhancedAnalysis,
+    AnalysisComplexity? enhancedComplexity,
+    List<BatchEnhancedResult>? enhancedResults,
+    BatchOverallAnalysis? overallAnalysis,
   }) {
     return BatchAnalysisJob(
       id: id ?? this.id,
@@ -104,6 +164,10 @@ class BatchAnalysisJob {
       operatorName: operatorName ?? this.operatorName,
       productionLine: productionLine ?? this.productionLine,
       batchNumber: batchNumber ?? this.batchNumber,
+      useEnhancedAnalysis: useEnhancedAnalysis ?? this.useEnhancedAnalysis,
+      enhancedComplexity: enhancedComplexity ?? this.enhancedComplexity,
+      enhancedResults: enhancedResults ?? this.enhancedResults,
+      overallAnalysis: overallAnalysis ?? this.overallAnalysis,
     );
   }
 }

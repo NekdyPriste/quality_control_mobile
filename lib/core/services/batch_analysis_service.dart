@@ -7,6 +7,7 @@ import '../models/quality_report.dart';
 import '../database/database_helper.dart';
 import 'gemini_service.dart';
 import 'email_service.dart';
+import 'batch_analysis_improved.dart';
 
 final batchAnalysisServiceProvider = Provider<BatchAnalysisService>((ref) {
   return BatchAnalysisService(
@@ -21,6 +22,7 @@ class BatchAnalysisService {
   final EmailService emailService;
   final DatabaseHelper databaseHelper;
   final _uuid = const Uuid();
+  late final BatchAnalysisImproved _improvedService;
   
   final StreamController<BatchAnalysisJob> _jobUpdatesController = 
       StreamController<BatchAnalysisJob>.broadcast();
@@ -33,7 +35,12 @@ class BatchAnalysisService {
     required this.geminiService,
     required this.emailService,
     required this.databaseHelper,
-  });
+  }) {
+    _improvedService = BatchAnalysisImproved(
+      geminiService: geminiService,
+      databaseHelper: databaseHelper,
+    );
+  }
 
   Future<BatchAnalysisJob> createBatchJob({
     required String name,
@@ -63,89 +70,19 @@ class BatchAnalysisService {
   Future<void> startBatchAnalysis(String jobId) async {
     final job = _activeJobs[jobId];
     if (job == null) throw Exception('Batch job not found: $jobId');
-    
-    // Update job status to processing
-    final updatedJob = job.copyWith(status: BatchStatus.processing);
-    _activeJobs[jobId] = updatedJob;
-    _jobUpdatesController.add(updatedJob);
-    
-    try {
-      final completedReports = <QualityReport>[];
-      final errorMessages = <String>[];
-      int completedCount = 0;
-      int failedCount = 0;
-      
-      // Process each photo pair sequentially to avoid API rate limits
-      for (int i = 0; i < job.photoPairs.length; i++) {
-        final photoPair = job.photoPairs[i];
-        
-        try {
-          // Analyze the photo pair
-          final comparisonResult = await geminiService.analyzeImages(
-            referenceImage: File(photoPair.referenceImagePath),
-            partImage: File(photoPair.partImagePath),
-            partType: photoPair.partType,
-          );
-          
-          // Save to database
-          final inspectionId = await databaseHelper.saveInspection(
-            referenceImagePath: photoPair.referenceImagePath,
-            partImagePath: photoPair.partImagePath,
-            partType: photoPair.partType,
-            comparisonResult: comparisonResult,
-            operatorName: job.operatorName,
-            productionLine: job.productionLine,
-            batchNumber: job.batchNumber,
-            partSerial: photoPair.partSerial,
-          );
-          
-          final qualityReport = QualityReport.legacy(
-            id: inspectionId,
-            referenceImagePath: photoPair.referenceImagePath,
-            partImagePath: photoPair.partImagePath,
-            partType: photoPair.partType,
-            createdAt: DateTime.now(),
-            comparisonResult: comparisonResult,
-          );
-          
-          completedReports.add(qualityReport);
-          completedCount++;
-          
-        } catch (e) {
-          errorMessages.add('Photo pair ${i + 1}: ${e.toString()}');
-          failedCount++;
-        }
-        
-        // Update progress
-        final progressJob = _activeJobs[jobId]!.copyWith(
-          completedPairs: completedCount,
-          failedPairs: failedCount,
-          completedReports: completedReports,
-          errorMessages: errorMessages,
-        );
-        _activeJobs[jobId] = progressJob;
-        _jobUpdatesController.add(progressJob);
-        
-        // Small delay to prevent API rate limiting
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
-      
-      // Mark job as completed
-      final finalJob = _activeJobs[jobId]!.copyWith(
-        status: BatchStatus.completed,
-      );
-      _activeJobs[jobId] = finalJob;
-      _jobUpdatesController.add(finalJob);
-      
-    } catch (e) {
-      // Mark job as failed
-      final failedJob = _activeJobs[jobId]!.copyWith(
-        status: BatchStatus.failed,
-        errorMessages: [...job.errorMessages, 'Batch failed: ${e.toString()}'],
-      );
-      _activeJobs[jobId] = failedJob;
-      _jobUpdatesController.add(failedJob);
-    }
+
+    print('🚀 [Batch] Starting IMPROVED batch analysis for job: $jobId');
+
+    // Použít vylepšený service s retry a timeout handling
+    await _improvedService.startImprovedBatchAnalysis(
+      job: job,
+      controller: _jobUpdatesController,
+      activeJobs: _activeJobs,
+      maxRetries: 2,
+      timeout: const Duration(minutes: 3),
+    );
+
+    print('✅ [Batch] Improved batch analysis completed for job: $jobId');
   }
 
   Future<String> generateBatchReport(String jobId) async {

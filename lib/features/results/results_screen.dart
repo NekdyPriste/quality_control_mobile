@@ -8,6 +8,8 @@ import '../../core/database/database_helper.dart';
 import '../../core/services/email_service.dart';
 import '../../core/services/dataset_export_service.dart';
 import 'widgets/defect_overlay_widget.dart';
+import '../recommendations/recommendation_screen.dart';
+import '../../core/models/quality/action_recommendation.dart';
 
 class ResultsScreen extends ConsumerStatefulWidget {
   final PartType partType;
@@ -504,6 +506,18 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _showRecommendations,
+                icon: const Icon(Icons.lightbulb_outline),
+                label: const Text('Zobrazit doporučení'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
             if (_savedInspectionId != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -723,6 +737,21 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
   void _newInspection(BuildContext context) {
     Navigator.popUntil(context, (route) => route.isFirst);
+  }
+
+  void _showRecommendations() {
+    // Mock recommendations pro demo (prázdný seznam pro teď)
+    final recommendations = <ActionRecommendation>[];
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecommendationScreen(
+          recommendations: recommendations,
+          analysisResult: widget.comparisonResult?.summary ?? 'Analýza dokončena',
+        ),
+      ),
+    );
   }
 
   void _showDefectOverlay() {
